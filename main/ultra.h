@@ -4,6 +4,6 @@
 #include <ultrasonic.h>
 #include <esp_err.h>
 
-void ultrasonic_test(void *pvParameters);
+void ultrasonic_task(void *pvParameters);
 
 #endif // ULTRASONIC_H

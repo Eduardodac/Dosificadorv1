@@ -20,15 +20,20 @@ void IRAM_ATTR gpio_isr_handler(void *arg)
     }
 }
 
-void gpio_task(void *arg)
-{
+void gpio_task(void* arg) {
     int pin_number;
-    for (;;)
-    {
-        if (xQueueReceive(gpio_evt_queue, &pin_number, portMAX_DELAY))
-        {
-            ESP_LOGI(TAGISR, "Interrupt in GPIO, estadoServo: %d", estadoServo);
-            estadoServo = !estadoServo;
+    for (;;) {
+        // Espera hasta recibir una notificación desde la ISR
+        if (xQueueReceive(gpio_evt_queue, &pin_number, portMAX_DELAY)) {
+            // Procesa el evento en contexto de tarea (seguro)
+            if(estadoServo == 0)
+            {
+                estadoServo = 1;
+            }else if (estadoServo == 1)
+            {
+                estadoServo = 0;
+            }
+            ESP_LOGI(TAGISR, "Interrupción en GPIO estadoservo: %d!", estadoServo);
         }
     }
 }
@@ -39,20 +44,30 @@ void gpio_init(void)
         .intr_type = GPIO_INTR_NEGEDGE,
         .mode = GPIO_MODE_INPUT,
         .pin_bit_mask = (1ULL << GPIO_INPUT_PIN),
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE
+        .pull_up_en = GPIO_PULLDOWN_ENABLE,
+
     };
     gpio_config(&io_conf);
 
     gpio_evt_queue = xQueueCreate(10, sizeof(int));
-    if (!gpio_evt_queue)
-    {
-        ESP_LOGE(TAGISR, "Failed to create queue");
+    if (gpio_evt_queue == NULL) {
+        ESP_LOGE(TAGISR, "Error creando la cola");
         return;
     }
 
-    xTaskCreate(gpio_task, "gpio_task", 2048, NULL, 10, NULL);
+    BaseType_t task_created = xTaskCreate(gpio_task, "gpio_task", 2048, NULL, 10, NULL);
+    if (task_created != pdPASS) {
+        ESP_LOGE(TAGISR, "Error creando la tarea");
+        return;
+    }
 
-    gpio_install_isr_service(0);
-    gpio_isr_handler_add(GPIO_INPUT_PIN, gpio_isr_handler, (void *)GPIO_INPUT_PIN);
+    esp_err_t err = gpio_install_isr_service(0);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAGISR, "Error instalando el servicio ISR: %s", esp_err_to_name(err));
+        return;
+    }
+
+    gpio_isr_handler_add(GPIO_INPUT_PIN, gpio_isr_handler, (void*) GPIO_INPUT_PIN);
+
+    ESP_LOGI(TAGISR, "Configuración ISR completada");
 }
