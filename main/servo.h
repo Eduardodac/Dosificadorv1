@@ -1,9 +1,7 @@
 #ifndef SERVO_H
 #define SERVO_H
 
-#include <driver/mcpwm_prelude.h>
-
-void servo_init(void);
-void servo_control_task(void *arg);
+void servo_init(void);           // Función para inicializar el servomotor
+void servo_update_angle(int angle);  // Función para actualizar el ángulo del servomotor
 
 #endif // SERVO_H
