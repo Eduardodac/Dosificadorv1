@@ -2,12 +2,12 @@
 #include <freertos/task.h>
 #include <driver/gpio.h>
 #include <esp_log.h>
+#include "variables_globales.h"
 
 #define GPIO_INPUT_PIN 2
 static const char *TAGISR = "GPIO_ISR";
 
 QueueHandle_t gpio_evt_queue = NULL;
-int estadoServo = 1;
 
 void IRAM_ATTR gpio_isr_handler(void *arg)
 {
@@ -23,17 +23,15 @@ void IRAM_ATTR gpio_isr_handler(void *arg)
 void gpio_task(void* arg) {
     int pin_number;
     for (;;) {
-        // Espera hasta recibir una notificación desde la ISR
+
         if (xQueueReceive(gpio_evt_queue, &pin_number, portMAX_DELAY)) {
-            // Procesa el evento en contexto de tarea (seguro)
-            if(estadoServo == 0)
-            {
-                estadoServo = 1;
-            }else if (estadoServo == 1)
-            {
-                estadoServo = 0;
+
+            if (xSemaphoreTake(xMutexEstadoActivacion, portMAX_DELAY) == pdTRUE) {
+                estadoActivacion = 1;
+                xSemaphoreGive(xMutexEstadoActivacion);
             }
-            ESP_LOGI(TAGISR, "Interrupción en GPIO estadoservo: %d!", estadoServo);
+
+            ESP_LOGI(TAGISR, "Interrupción en GPIO estadoActivacion: %d!", estadoActivacion);
         }
     }
 }

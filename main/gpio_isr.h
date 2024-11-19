@@ -5,7 +5,6 @@
 #include <freertos/queue.h>
 
 extern QueueHandle_t gpio_evt_queue;
-extern int estadoServo;
 
 void gpio_isr_handler(void *arg);
 void gpio_task(void *arg);
