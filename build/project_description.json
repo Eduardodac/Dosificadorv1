@@ -1,7 +1,7 @@
 {
     "version":            "1.1",
     "project_name":       "Dosificador",
-    "project_version":    "81ce4a8-dirty",
+    "project_version":    "703aca4-dirty",
     "project_path":       "C:/TrabajoTerminalII/Dosificador",
     "idf_path":           "C:/Espressif/frameworks/esp-idf-v5.3",
     "build_dir":          "C:/TrabajoTerminalII/Dosificador/build",
@@ -1825,7 +1825,7 @@
             "managed_reqs": [],
             "managed_priv_reqs": [],
             "file": "C:/TrabajoTerminalII/Dosificador/build/esp-idf/main/libmain.a",
-            "sources": [ "C:/TrabajoTerminalII/Dosificador/main/Dosificador.c", "C:/TrabajoTerminalII/Dosificador/main/ultra.c", "C:/TrabajoTerminalII/Dosificador/main/gpio_isr.c", "C:/TrabajoTerminalII/Dosificador/main/servo.c", "C:/TrabajoTerminalII/Dosificador/main/motor_dc.c", "C:/TrabajoTerminalII/Dosificador/main/variables_globales.c" ],
+            "sources": [ "C:/TrabajoTerminalII/Dosificador/main/Dosificador.c", "C:/TrabajoTerminalII/Dosificador/main/ultra.c", "C:/TrabajoTerminalII/Dosificador/main/gpio_isr.c", "C:/TrabajoTerminalII/Dosificador/main/servo.c", "C:/TrabajoTerminalII/Dosificador/main/motor_dc.c", "C:/TrabajoTerminalII/Dosificador/main/variables_globales.c", "C:/TrabajoTerminalII/Dosificador/main/hx711_component.c" ],
             "include_dirs": [ "." ]
         },
         "max1704x": {

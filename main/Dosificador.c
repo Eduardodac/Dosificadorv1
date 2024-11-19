@@ -5,12 +5,15 @@
 #include <esp_log.h>
 #include "variables_globales.h"
 #include "motor_dc.h"
+#include "hx711_component.h"
+
 static const char *TAGMAIN = "MAIN";
 
 void app_main(void)
 {
     create_mutex_estadoActivacion();
     xTaskCreate(ultrasonic_task, "ultrasonic_task", 2048, NULL, 5, NULL);
+     xTaskCreate(hx711_task, "hx711_task", configMINIMAL_STACK_SIZE * 5, NULL, 5, NULL);
     gpio_init();
     servo_init();
     motor_dc_init();
