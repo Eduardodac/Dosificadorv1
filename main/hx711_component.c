@@ -60,7 +60,7 @@ void hx711_task(void *pvParameters)
         }
 
         int32_t newData = data - DataSet;
-        float measure = (double)newData / 117;
+        float measure = (double)newData / 114.3;
         ESP_LOGI(TAGHX, "Datos: %" PRIi32, newData);
         ESP_LOGI(TAGHX, "Medida: %.2f grms", measure);
 

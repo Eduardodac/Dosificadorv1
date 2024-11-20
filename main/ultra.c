@@ -41,6 +41,6 @@ void ultrasonic_task(void *pvParameters)
         else
             printf("Distance: %0.04f cm\n", distance*100);
 
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
