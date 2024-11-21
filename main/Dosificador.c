@@ -12,6 +12,7 @@ static const char *TAGMAIN = "MAIN";
 void app_main(void)
 {
     create_mutex_estadoActivacion();
+    create_mutex_ultraMeasure();
     xTaskCreate(ultrasonic_task, "ultrasonic_task", 2048, NULL, 5, NULL);
      xTaskCreate(hx711_task, "hx711_task", configMINIMAL_STACK_SIZE * 5, NULL, 5, NULL);
     gpio_init();
