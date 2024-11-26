@@ -8,13 +8,15 @@
 #include "hx711_component.h"
 
 static const char *TAGMAIN = "MAIN";
+#define DOUT_PIN GPIO_NUM_19    // Pin de datos (DOUT)
+#define PD_SCK_PIN GPIO_NUM_18  // Pin de reloj (SCK)
 
 void app_main(void)
 {
     create_mutex_estadoActivacion();
     create_mutex_ultraMeasure();
     xTaskCreate(ultrasonic_task, "ultrasonic_task", 2048, NULL, 5, NULL);
-     xTaskCreate(hx711_task, "hx711_task", configMINIMAL_STACK_SIZE * 5, NULL, 5, NULL);
+    xTaskCreate(hx711_task, "hx711_task", configMINIMAL_STACK_SIZE * 5, NULL, 5, NULL);
     gpio_init();
     servo_init();
     motor_dc_init();

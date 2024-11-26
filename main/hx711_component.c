@@ -1,69 +1,177 @@
-#include "hx711_component.h"
-#include <esp_log.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <hx711.h>
+#include "HX711_component.h"
+#include "esp_log.h"
+#include <rom/ets_sys.h>
 
-static const char *TAGHX = "hx711";
+#define HIGH 1
+#define LOW 0
+#define CLOCK_DELAY_US 20
 
-void hx711_task(void *pvParameters)
+#define DEBUGTAG "HX711"
+
+static gpio_num_t GPIO_PD_SCK = GPIO_NUM_15;	// Power Down and Serial Clock Input Pin
+static gpio_num_t GPIO_DOUT = GPIO_NUM_14;		// Serial Data Output Pin
+static HX711_GAIN GAIN = eGAIN_128;		// amplification factor
+static unsigned long OFFSET = 0;	// used for tare weight
+static float SCALE = 1;	// used to return weight in grams, kg, ounces, whatever
+
+void HX711_init(gpio_num_t dout, gpio_num_t pd_sck, HX711_GAIN gain )
 {
-    hx711_t dev = {
-        .dout = HX711_DOUT_PIN,
-        .pd_sck = HX711_SCK_PIN,
-        .gain = HX711_GAIN_A_64
-    };
+	GPIO_PD_SCK = pd_sck;
+	GPIO_DOUT = dout;
 
-    // Inicializar el dispositivo
-    ESP_ERROR_CHECK(hx711_init(&dev));
-    int32_t DataSet = 0;
-    int calibrar = 1;
-    ESP_LOGI(TAGHX, "CALIBRANDO...");
-    while (calibrar == 1)
+	gpio_config_t io_conf;
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pin_bit_mask = (1ULL<<GPIO_PD_SCK);
+    io_conf.pull_down_en = 0;
+    io_conf.pull_up_en = 0;
+    gpio_config(&io_conf);
+
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.pin_bit_mask = (1ULL<<GPIO_DOUT);
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_up_en = 0;
+	gpio_config(&io_conf);
+
+	HX711_set_gain(gain);
+}
+
+bool HX711_is_ready()
+{
+	return gpio_get_level(GPIO_DOUT);
+}
+
+void HX711_set_gain(HX711_GAIN gain)
+{
+	GAIN = gain;
+	gpio_set_level(GPIO_PD_SCK, LOW);
+	HX711_read();
+}
+
+uint8_t HX711_shiftIn()
+{
+	uint8_t value = 0;
+
+    for(int i = 0; i < 8; ++i) 
     {
-        esp_err_t readCal = hx711_wait(&dev, 100);
-        if (readCal != ESP_OK)
-        {
-            ESP_LOGE(TAGHX, "Dispositivo no encontrado: %d (%s)", readCal, esp_err_to_name(readCal));
-            continue;
-        }
-
-        int32_t dataCalibration;
-        readCal = hx711_read_average(&dev, 1000, &dataCalibration);
-        if (readCal != ESP_OK)
-        {
-            ESP_LOGE(TAGHX, "No se pudo leer el dato: %d (%s)", readCal, esp_err_to_name(readCal));
-            continue;
-        }
-
-        DataSet = dataCalibration;
-        calibrar = 0;
-        vTaskDelay(pdMS_TO_TICKS(100));
+        gpio_set_level(GPIO_PD_SCK, HIGH);
+        ets_delay_us(CLOCK_DELAY_US);
+        value |= gpio_get_level(GPIO_DOUT) << (7 - i); //get level returns 
+        gpio_set_level(GPIO_PD_SCK, LOW);
+        ets_delay_us(CLOCK_DELAY_US);
     }
-    ESP_LOGI(TAGHX, "CALIBRADÍSIMO");
-    // Leer datos del dispositivo
-    while (1)
-    {
-        esp_err_t r = hx711_wait(&dev, 100);
-        if (r != ESP_OK)
-        {
-            ESP_LOGE(TAGHX, "Dispositivo no encontrado: %d (%s)", r, esp_err_to_name(r));
-            continue;
-        }
 
-        int32_t data;
-        r = hx711_read_average(&dev, 50, &data);
-        if (r != ESP_OK)
-        {
-            ESP_LOGE(TAGHX, "No se pudo leer el dato: %d (%s)", r, esp_err_to_name(r));
-            continue;
-        }
+    return value;
+}
 
-        int32_t newData = data - DataSet;
-        float measure = (double)newData / 114.3;
-        ESP_LOGI(TAGHX, "Datos: %" PRIi32, newData);
-        ESP_LOGI(TAGHX, "Medida: %.2f grms", measure);
+unsigned long HX711_read()
+{
+	gpio_set_level(GPIO_PD_SCK, LOW);
+	// wait for the chip to become ready
+	while (HX711_is_ready()) 
+	{
+		vTaskDelay(10 / portTICK_PERIOD_MS);
+	}
 
-        vTaskDelay(pdMS_TO_TICKS(100));
-    }
+	unsigned long value = 0;
+
+	//--- Enter critical section ----
+	portDISABLE_INTERRUPTS();
+
+	for(int i=0; i < 24 ; i++)
+	{   
+		gpio_set_level(GPIO_PD_SCK, HIGH);
+        ets_delay_us(CLOCK_DELAY_US);
+        value = value << 1;
+        gpio_set_level(GPIO_PD_SCK, LOW);
+        ets_delay_us(CLOCK_DELAY_US);
+
+        if(gpio_get_level(GPIO_DOUT))
+        	value++;
+	}
+
+	// set the channel and the gain factor for the next reading using the clock pin
+	for (unsigned int i = 0; i < GAIN; i++) 
+	{	
+		gpio_set_level(GPIO_PD_SCK, HIGH);
+		ets_delay_us(CLOCK_DELAY_US);
+		gpio_set_level(GPIO_PD_SCK, LOW);
+		ets_delay_us(CLOCK_DELAY_US);
+	}	
+	portENABLE_INTERRUPTS();
+	//--- Exit critical section ----
+
+	value =value^0x800000;
+
+	return (value);
+}
+
+
+
+unsigned long  HX711_read_average(char times) 
+{
+	ESP_LOGI(DEBUGTAG, "===================== READ AVERAGE START ====================");
+	unsigned long sum = 0;
+	for (char i = 0; i < times; i++) 
+	{
+		sum += HX711_read();
+	}
+	ESP_LOGI(DEBUGTAG, "===================== READ AVERAGE END : %ld ====================",(sum / times));
+	return sum / times;
+}
+
+unsigned long HX711_get_value(char times) 
+{
+	unsigned long avg = HX711_read_average(times);
+	if(avg > OFFSET)
+		return avg - OFFSET;
+	else
+		return 0;
+}
+
+float HX711_get_units(char times) 
+{
+	return HX711_get_value(times) / SCALE;
+}
+
+void HX711_tare( ) 
+{
+	ESP_LOGI(DEBUGTAG, "===================== START TARE ====================");
+	unsigned long sum = 0; 
+	sum = HX711_read_average(20);
+	HX711_set_offset(sum);
+	ESP_LOGI(DEBUGTAG, "===================== END TARE: %ld ====================",sum);
+}
+
+void HX711_set_scale(float scale ) 
+{
+	SCALE = scale;
+}
+
+float HX711_get_scale()
+ {
+	return SCALE;
+}
+
+void HX711_set_offset(unsigned long offset)
+ {
+	OFFSET = offset;
+}
+
+unsigned long HX711_get_offset(unsigned long offset) 
+{
+	return OFFSET;
+}
+
+void HX711_power_down() 
+{
+	gpio_set_level(GPIO_PD_SCK, LOW);
+	ets_delay_us(CLOCK_DELAY_US);
+	gpio_set_level(GPIO_PD_SCK, HIGH);
+	ets_delay_us(CLOCK_DELAY_US);
+}
+
+void HX711_power_up() 
+{
+	gpio_set_level(GPIO_PD_SCK, LOW);
 }

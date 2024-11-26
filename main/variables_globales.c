@@ -28,3 +28,17 @@ void create_mutex_ultraMeasure() {
         }
     }
 }
+
+//variables relacionada a la lectura de la báscula
+float loadCellMeasure;
+SemaphoreHandle_t xMutexLoadCellMeasure = NULL;
+
+void create_mutex_loadCellMeasure() {
+    if (xMutexLoadCellMeasure == NULL) {
+        xMutexLoadCellMeasure = xSemaphoreCreateMutex();
+        if (xMutexLoadCellMeasure == NULL) {
+            printf("Error: No se pudo crear el mutex loadCellMeasure\n");
+        }
+    }
+}
+

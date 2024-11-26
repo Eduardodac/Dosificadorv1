@@ -6,8 +6,8 @@
 #include "esp_log.h"
 
 #define MAX_DISTANCE_CM 1000 // 5m max
-#define TRIGGER_GPIO 18
-#define ECHO_GPIO 19
+#define TRIGGER_GPIO 19
+#define ECHO_GPIO 18
 
 static const char *TAGULTRA = "ultrasonic:";
 
@@ -51,6 +51,6 @@ void ultrasonic_task(void *pvParameters)
             }
         }
 
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
