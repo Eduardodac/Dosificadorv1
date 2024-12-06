@@ -5,7 +5,7 @@
 SemaphoreHandle_t xMutexEstadoActivacion = NULL;
 
 //variables relacionadas a la lectura del botón 
-int estadoActivacion = 0;
+int estadoActivacion = 1;
 
 void create_mutex_estadoActivacion() {
     if (xMutexEstadoActivacion == NULL) {
